@@ -2,7 +2,8 @@ import requests
 
 
 class PyCapsule():
-    headers = {'Content-Type': 'application/xml'}
+    xml_headers = {'Content-Type': 'application/xml',
+                'Accept': 'text/xml'
     def __init__(self, **kwargs):
         self.base_url = kwargs.pop("base_url", None)
         self.api_key = kwargs.pop("api_key", None)
