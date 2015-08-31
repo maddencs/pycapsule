@@ -6,214 +6,276 @@ class PyCapsuleObject():
     Data object to be returned by PyCapsuleObjectManager.
     Has functionality to update, delete, retrieve tags,
     add opportunities, and cases.
+
+    Args:
+        endpoint (str): Capsule CRM endpoint
     """
-    def __init__(self, **kwargs):
-        pass
+    def __init__(self, endpoint, **kwargs):
+        self.endpoint = endpoint
+        self.pycapsule = manager.pycapsule
+        self.location = pycapsule.location + self.endpoint + '/' + self.capsule_id
 
     def delete(self):
         """
         Deletes the object from Capsule CRM
         """
-        pass
+        r = requests.delete(self.location, auth=self.pycapsule.auth)
+        if r.status_code == 200:
+            return "Success"
+        else:
+            return "There was a problem deleting the object from Capsule CRM."
 
-    def update(self, data):
+    def update(self, data=None, headers=None):
         """
-        Updates the object on Capsule CRM.
+        updates the object on capsule crm.
         
-        Args:
-            data (json/xml): data to update Capsule object
+        args:
+            data (json/xml): data to update capsule object
             data_type(str): the type of data that you're sending
         """
-        pass
+        if headers:
+            headers = getattr(self.pycapsule, "%_headers" % headers)
+        r = requests.put(self.location, auth=self.pycapsule.auth, data=data, headers=headers)
+        if r.status_code != 200:
+            return "There was a problem updating the object on Capsule CRM."
 
-    def tags(self):
+    def tags(self, headers=None):
         """
-        Returns:
+        returns:
             list: list of tags on the object
         """
-        pass
+        if headers:
+            headers = getattr(self.pycapsule, "%_headers" % headers)
+        r = requests.get(self.location + '/tag', auth=self.pycapsule.auth)
+        return None
+
+    def custom_fields(self):
+        """
+        returns:
+            object: pycapsuleobjectmanager for this object's custom fields
+        """
+        return PyCapsuleObjectManager(self)
+
     
     def opportunities(self):
         """
-        Returns:
-            object: PyCapsuleObjectManager for this object's opportunities
+        returns:
+            object: pycapsuleobjectmanager for this object's opportunities
         """
         pass
 
     def cases(self):
         """
-        Returns:
-            object: PyCapsuleObjectManager for this object's opportunities
+        returns:
+            object: pycapsuleobjectmanager for this object's cases
         """
         pass
+
+    def history(self):
+        """
+        returns:
+            object: pycapsuleobjectmanager for object's history
+        """
+        pass
+
+    def remove_contact(self, contact_id=None):
+        url = self.location + '/contact/' + contact_id
+        r = requests.delete(url, auth=self.pycapsule.auth)
+        return r.status_code
 
 
 class PyCapsuleObjectManager():
     """
-    Object Manager for PyCapsule objects. Can add and retrieve
-    Capsule CRM objects.
+    object manager for pycapsule objects. can add and retrieve
+    capsule crm objects.
     
-    Args:
-        pycapsule (object): PyCapsule object to pass on API key and other
+    args:
+        pycapsule (object): pycapsule object to pass on api key and other
             information
-        endpoint (str): CapsuleCRM endpoint ex. party, organisation, person
+        endpoint (str): capsulecrm endpoint ex. party, organisation, person
 
     """
     
-    xml_headers = {'Content-Type': 'application/xml',
-                'Accept': 'text/xml'}
-    json_headers = {'Content-Type:': 'application/json',
-                'Accept': 'text/json'}
+    xml_headers = {'content-type': 'application/xml',
+                'accept': 'text/xml'}
+    json_headers = {'content-type:': 'application/json',
+                'accept': 'text/json'}
 
     def __init__(self, pycapsule, endpoint, **kwargs):
-        self.endpoint = endpoint
+        if hasattr(pycapsule, 'location'):
+            self.endpoint = pycapsule.location + '/' + endpoint
         if hasattr(pycapsule, 'pycapsule'):
             self.pycapsule = pycapsule.pycapsule
         else:
             self.pycapsule = pycapsule
 
-    def add(self, data, data_type, return_type=None):
+    def add(self, data, data_type=None, return_type=None, capsule_id=None):
         """
-        Add a new object of this type to Capsule CRM.
+        add a new object of this type to capsule crm.
 
         Args:
-            data (xml, json): data to be sent to CRM API
-            data_type (str): format of data being sent ex. json or xml
+            data (xml, json): data to be sent to crm api
 
         Kwargs:
-            return_type (optional[str]): Desired format of data to be received
-                ex. xml or object. If None is provided, defaults to xml
+            data_type (str): format of data being sent ex. json or xml
+            return_type (optional[str]): desired format of data to be received
+                ex. xml or object. if none is provided, defaults to xml
 
         Returns:
             object/xml: if xml is specificied in return_type returns xml
-                as received from API, otherwise returns a PyCapsuleRequest
+                as received from api, otherwise returns a pycapsulerequest
                 object
 
         Example:
-            PyCapsule.parties.add('filename.xml', 'xml', return_type='object')
+            pycapsule.parties.add('filename.xml', 'xml', return_type='object')
         """
+        if data_type:
+            headers = getattr(self.pycapsule, "%s_headers" % data_type)
+        if capsule_id:
+            url = self.endpoint + '/' + capsule_id
+        else:
+            url=self.endpoint
+        r = requests.post(url, auth=self.pycapsule.auth, headers=headers)
+        return r.location
+
     def get(self, return_type=None, capsule_id=None):
         """
-        Get Capsule CRM object by id.
+        get capsule crm object by id.
 
         Kwargs:
-            return_type (optional[str]): Desired format of data to be received
-            capsule_id (int): Capsule CRM ID of the target object.
+            return_type (optional[str]): desired format of data to be received
+            capsule_id (int): capsule crm id of the target object.
 
         Returns:
-            object/xml: Returns object with functionality if no return_type
+            object/xml: returns object with functionality if no return_type
                 is specified, otherwise returns the specified data type
         """
-        pass
+        if return_type:
+            headers = getattr(self.pycapsule, "%s_headers" % return_type)
+        else:
+            headers = None
+        r.get(self.endpoint + '/%s' % capsule_id, auth=self.pycapsule.auth, headers=headers)
+        return """Return data however it's specified"""
 
     def filter(self, return_type=None, **kwargs):
         """
-        Get Capsule CRM objects matching kwargs.
+        get capsule crm objects matching kwargs.
 
-        Kwargs:
-            return_type (optional[str]): Desired format of data to be received
-            additional kwargs may be provided to match available filters
+        kwargs:
+            return_type (optional[str]): desired format of data to be received
+                additional kwargs may be provided to match available filters
 
-        Returns:
-            list/xml: Returns list of PyCapsuleObjects if return_type
+        returns:
+            list/xml: returns list of pycapsuleobjects if return_type
                 not specified
         """
-        pass
+        if return_type:
+            headers = getattr(self.pycapsule, "%s_headers" % return_type)
+        else:
+            headers = None
+        r = requests.get(self.endpoint, auth=self.pycapsule.auth, headers=headers, params=kwargs)
+        return """Return data however specified"""
 
     def all(self, return_type=None):
         """
-        Retrieve all Capsule CRM objects of the manager's type.
+        retrieve all capsule crm objects of the manager's type.
 
-        Returns:
-            list/xml: Returns list of PyCapsuleObjects if return_type
+        returns:
+            list/xml: returns list of pycapsuleobjects if return_type
                 is not specified.
         """
-        pass
+        if return_type:
+            headers = getattr(self.pycapsule, "%s_headers" % return_type)
+        else:
+            headers = None
+        r = requests.get(self.endpoint, auth=self.pycapsule.auth, headers=headers)
+        return """Return data however specified"""
 
 
 class PyCapsule():
     """
-    PyCapsule model handles the adding, updating, and deleting of
-    of Capsule CRM API objects.
+    pycapsule model handles the adding, updating, and deleting of
+    of capsule crm api objects.
 
-    Args:
+    args:
         base_url (str): base for capsulecrm url. ex. name in https://name.capsulecrm.com
-        api_key (str): API key received from My Preferences on Capsule CRM
+        api_key (str): api key received from my preferences on capsule crm
     """
 
     def __init__(self, base_url, api_key):
-        self.base_url = "https://%s.capsulecrm.com/api/" % base_url
-        self.api_key = (api_key, "x")
+        self.location = "https://%s.capsulecrm.com/api/" % base_url
+        self.auth = (api_key, "x")
     
     @property
     def parties(self):
         """
-        Returns:
-            object:object manager for all parties. This includes people and 
+        returns:
+            object:object manager for all parties. this includes people and 
                 organisations.
 
         """
-        return PyCapsuleObjectManager(self,)
+        return PyCapsuleObjectManager(self, 'party')
 
     @property
     def opportunities(self):
         """
-        Returns:
+        returns:
             object: object manager for all opportunities.
         """
-        pass
+        return PyCapsuleObjectManager(self, 'opportunity')
 
     @property
     def cases(self):
         """
-        Returns:
+        returns:
             object: object manager for all cases.
         """
-        pass
+        return PyCapsuleObjectManager(self, 'kase')
 
     @property
     def history(self):
         """
-        Returns:
+        returns:
             object: object manager for history.
         """
-        pass
+        return PyCapsuleObjectManager(self, 'history')
 
     @property
     def tasks(self):
         """
-        Returns:
+        returns:
             object: object manager for tasks.
         """
-        pass
-
+        return PyCapsuleObjectManager(self, 'task')
+    
     @property
     def tracks(self):
         """
-        Returns:
+        returns:
             object: object manager for tracks.
         """
+        return PyCapsuleObjectManager(self, 'tracks')
 
     @property
     def users(self):
         """
-        Returns:
-            object: object manager for users.
+        returns:
+            list: list of users on the account
         """
         pass
 
     @property
     def countries(self):
         """
-        Returns:
-            list: a list of all available countries in Capsule CRM.
+        returns:
+            list: a list of all available countries in capsule crm.
         """
         pass
 
     @property
     def currencies(self):
         """
-        Returns:
-            list: list of string values of available currencies on CapsuleCRM
+        returns:
+            list: list of string values of available currencies on capsulecrm
             """
         pass
