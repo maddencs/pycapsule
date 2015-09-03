@@ -1,4 +1,5 @@
 import requests
+import json
 
 
 class PyCapsuleObject():
@@ -8,20 +9,24 @@ class PyCapsuleObject():
     add opportunities, and cases.
 
     Args:
-        endpoint (str): Capsule CRM endpoint
+        endpoint (str): Capsule CRM endpoint ex. party, person, kase, etc.
     """
-    def __init__(self, endpoint, **kwargs):
-        self.endpoint = endpoint
+
+    def __init__(self, manager, endpoint, location=None, **kwargs):
         self.pycapsule = manager.pycapsule
-        self.location = pycapsule.location + self.endpoint + '/' + self.capsule_id
+        self.endpoint = endpoint
+        self.location = location
+        if kwargs['json_request']:
+            for k, v in kwargs['json_request'].items():
+                if k == 'organisation':
+                    for name, value in v.items():
+                        setattr(self, name, value)
 
     def delete(self):
-        """
-        Deletes the object from Capsule CRM
-        """
+        """Deletes the object from Capsule CRM"""
         r = requests.delete(self.location, auth=self.pycapsule.auth)
         if r.status_code == 200:
-            return "Success"
+            return "Object deleted"
         else:
             return "There was a problem deleting the object from Capsule CRM."
 
@@ -38,6 +43,8 @@ class PyCapsuleObject():
         r = requests.put(self.location, auth=self.pycapsule.auth, data=data, headers=headers)
         if r.status_code != 200:
             return "There was a problem updating the object on Capsule CRM."
+        else:
+            return r.content
 
     def tags(self, headers=None):
         """
@@ -46,17 +53,23 @@ class PyCapsuleObject():
         """
         if headers:
             headers = getattr(self.pycapsule, "%_headers" % headers)
-        r = requests.get(self.location + '/tag', auth=self.pycapsule.auth)
-        return None
+        url = self.pycapsule.location + 'party/' + str(self.id) + '/tag'
+        r = requests.get(url, auth=self.pycapsule.auth, headers=self.pycapsule.json_headers)
+        tags = dict(json.loads(r.content.decode("utf-8")))
+        tag_list = list()
+        for tag in tags['tags']['tag']:
+            tag_list.append(tag['name'])
+        return tag_list
 
+    @property
     def custom_fields(self):
         """
         returns:
             object: pycapsuleobjectmanager for this object's custom fields
         """
-        return PyCapsuleObjectManager(self)
+        return PyCapsuleObjectManager(self, self.endpoint)
 
-    
+    @property
     def opportunities(self):
         """
         returns:
@@ -64,6 +77,7 @@ class PyCapsuleObject():
         """
         pass
 
+    @property
     def cases(self):
         """
         returns:
@@ -71,9 +85,10 @@ class PyCapsuleObject():
         """
         pass
 
+    @property
     def history(self):
         """
-        returns:
+        Returns:
             object: pycapsuleobjectmanager for object's history
         """
         pass
@@ -82,6 +97,14 @@ class PyCapsuleObject():
         url = self.location + '/contact/' + contact_id
         r = requests.delete(url, auth=self.pycapsule.auth)
         return r.status_code
+
+    @property
+    def contacts(self):
+        """
+        Returns:
+            object: PyCapsuleObjectManager for object's contacts
+        """
+        pass
 
 
 class PyCapsuleObjectManager():
@@ -92,24 +115,29 @@ class PyCapsuleObjectManager():
     args:
         pycapsule (object): pycapsule object to pass on api key and other
             information
-        endpoint (str): capsulecrm endpoint ex. party, organisation, person
+        endpoint (str): capsulecrm endpoint ex. party,  person
 
     """
     
-    xml_headers = {'content-type': 'application/xml',
-                'accept': 'text/xml'}
-    json_headers = {'content-type:': 'application/json',
-                'accept': 'text/json'}
-
     def __init__(self, pycapsule, endpoint, **kwargs):
+        self.endpoint = endpoint
         if hasattr(pycapsule, 'location'):
-            self.endpoint = pycapsule.location + '/' + endpoint
+            self.location = pycapsule.location + endpoint
         if hasattr(pycapsule, 'pycapsule'):
             self.pycapsule = pycapsule.pycapsule
         else:
             self.pycapsule = pycapsule
 
-    def add(self, data, data_type=None, return_type=None, capsule_id=None):
+    def create(self, **kwargs):
+        """
+        Create new object of type from kwargs
+
+        Kwargs:
+            * (optionial[str]): must be existing kwargs for the object
+        """
+        pass
+
+    def add(self, data, data_type=None, return_type=None):
         """
         add a new object of this type to capsule crm.
 
@@ -131,14 +159,11 @@ class PyCapsuleObjectManager():
         """
         if data_type:
             headers = getattr(self.pycapsule, "%s_headers" % data_type)
-        if capsule_id:
-            url = self.endpoint + '/' + capsule_id
-        else:
-            url=self.endpoint
-        r = requests.post(url, auth=self.pycapsule.auth, headers=headers)
+        r = requests.post(self.location, data=data, auth=self.pycapsule.auth, headers=headers)
+        # if successful return an object with the data properties added
         return r.location
 
-    def get(self, return_type=None, capsule_id=None):
+    def get(self, id=None, return_type=None):
         """
         get capsule crm object by id.
 
@@ -150,12 +175,21 @@ class PyCapsuleObjectManager():
             object/xml: returns object with functionality if no return_type
                 is specified, otherwise returns the specified data type
         """
-        if return_type:
-            headers = getattr(self.pycapsule, "%s_headers" % return_type)
-        else:
-            headers = None
-        r.get(self.endpoint + '/%s' % capsule_id, auth=self.pycapsule.auth, headers=headers)
-        return """Return data however it's specified"""
+        if self.endpoint == 'person' or 'organisation':
+            self.location = self.pycapsule.location + 'party'
+        if return_type == 'json':
+            headers = self.pycapsule.json_headers
+            r = requests.get(self.location + '/%s' % id, auth=self.pycapsule.auth, headers=headers)
+            return r.json()
+        elif return_type == 'xml':
+            headers = self.pycapsule.xml_headers
+            r = requests.get(self.location + '/%s' % id, auth=self.pycapsule.auth, headers=headers)
+            return r.content
+        elif return_type is None:
+            headers = self.pycapsule.json_headers
+            url = self.location + '/%s' % id
+            r = requests.get(url, auth=self.pycapsule.auth, headers=headers)
+            return PyCapsuleObject(self, self.endpoint, json_request=r.json())
 
     def filter(self, return_type=None, **kwargs):
         """
@@ -172,9 +206,11 @@ class PyCapsuleObjectManager():
         if return_type:
             headers = getattr(self.pycapsule, "%s_headers" % return_type)
         else:
-            headers = None
-        r = requests.get(self.endpoint, auth=self.pycapsule.auth, headers=headers, params=kwargs)
-        return """Return data however specified"""
+            headers = self.json_headers
+        r = requests.get(self.location, auth=self.pycapsule.auth, headers=headers, params=kwargs)
+        if return_type is None:
+            return PyCapsuleObject(self, r.content)
+        return r.content
 
     def all(self, return_type=None):
         """
@@ -188,8 +224,8 @@ class PyCapsuleObjectManager():
             headers = getattr(self.pycapsule, "%s_headers" % return_type)
         else:
             headers = None
-        r = requests.get(self.endpoint, auth=self.pycapsule.auth, headers=headers)
-        return """Return data however specified"""
+        r = requests.get(self.location, auth=self.pycapsule.auth, headers=headers)
+        return r.content
 
 
 class PyCapsule():
@@ -201,10 +237,25 @@ class PyCapsule():
         base_url (str): base for capsulecrm url. ex. name in https://name.capsulecrm.com
         api_key (str): api key received from my preferences on capsule crm
     """
+    xml_headers = {'content-type': 'application/xml',
+                'accept': 'text/xml'}
+    json_headers = {'content-type:': 'application/json',
+                'accept': 'application/json'}
+
 
     def __init__(self, base_url, api_key):
         self.location = "https://%s.capsulecrm.com/api/" % base_url
         self.auth = (api_key, "x")
+        
+    @property
+    def organisations(self):
+        """
+        returns:
+            object:object manager for all parties. this includes people and 
+                organisations.
+
+        """
+        return PyCapsuleObjectManager(self, 'organisation')
     
     @property
     def parties(self):
