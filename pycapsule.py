@@ -2,6 +2,18 @@ import requests
 import json
 
 
+def make_pycobjects(data, manager):
+    print('DATAAAAAAAAAAAAAA', data)
+    obj_dict = {'organisations': list(),
+            'people': list()}
+    if 'organisation' in data['parties'].keys():
+        for party in data['parties']['organisation']:
+            obj_dict['organisations'].append(PyCapsuleObject(manager, 'organisation', json_response=party))
+    if 'person' in data['parties'].keys():
+        for person in data['parties']['person']:
+            obj_dict['people'].append(PyCapsuleObject(manager, 'person', json_response=person))
+    return obj_dict
+
 class PyCapsuleObject():
     """
     Data object to be returned by PyCapsuleObjectManager.
@@ -10,17 +22,26 @@ class PyCapsuleObject():
 
     Args:
         endpoint (str): Capsule CRM endpoint ex. party, person, kase, etc.
+
+    Kwargs:
+        json_response (optional[json]): Used for filling self with capsule data
     """
 
     def __init__(self, manager, endpoint, location=None, **kwargs):
         self.pycapsule = manager.pycapsule
         self.endpoint = endpoint
         self.location = location
-        if kwargs['json_request']:
-            for k, v in kwargs['json_request'].items():
+        if 'json_response' in kwargs.keys():
+            for k, v in kwargs['json_response'].iteritems():
                 if k == 'organisation':
                     for name, value in v.items():
-                        setattr(self, name, value)
+                        try:
+                            setattr(self, name, value)
+                        except:
+                            if len(value) == 0:
+                                setattr(self, name, None)
+                            print('failed attr', name, len(value))
+
 
     def delete(self):
         """Deletes the object from Capsule CRM"""
@@ -99,7 +120,7 @@ class PyCapsuleObject():
         return r.status_code
 
     @property
-    def contacts(self):
+    def additional_contacts(self):
         """
         Returns:
             object: PyCapsuleObjectManager for object's contacts
@@ -184,12 +205,12 @@ class PyCapsuleObjectManager():
         elif return_type == 'xml':
             headers = self.pycapsule.xml_headers
             r = requests.get(self.location + '/%s' % id, auth=self.pycapsule.auth, headers=headers)
-            return r.content
+            return r.text
         elif return_type is None:
             headers = self.pycapsule.json_headers
             url = self.location + '/%s' % id
             r = requests.get(url, auth=self.pycapsule.auth, headers=headers)
-            return PyCapsuleObject(self, self.endpoint, json_request=r.json())
+            return PyCapsuleObject(self, self.endpoint, json_response=r.json())
 
     def filter(self, return_type=None, **kwargs):
         """
@@ -206,11 +227,16 @@ class PyCapsuleObjectManager():
         if return_type:
             headers = getattr(self.pycapsule, "%s_headers" % return_type)
         else:
-            headers = self.json_headers
+            headers = self.pycapsule.json_headers
+        if self.endpoint == 'person' or 'organisation':
+            self.location = self.pycapsule.location + 'party'
         r = requests.get(self.location, auth=self.pycapsule.auth, headers=headers, params=kwargs)
-        if return_type is None:
-            return PyCapsuleObject(self, r.content)
-        return r.content
+        if return_type:
+            return r.content
+        data = r.json()
+        # return PyCapsuleObject(self, r.content, json_response=r.json())
+        return make_pycobjects(data, self)
+
 
     def all(self, return_type=None):
         """
@@ -225,7 +251,10 @@ class PyCapsuleObjectManager():
         else:
             headers = None
         r = requests.get(self.location, auth=self.pycapsule.auth, headers=headers)
-        return r.content
+        if return_type == 'json':
+            return r.json()
+        else:
+            return r.content
 
 
 class PyCapsule():
