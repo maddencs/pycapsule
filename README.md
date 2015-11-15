@@ -1,7 +1,7 @@
 # PyCapsule
 Python library for consuming the <a href="http://developer.capsulecrm.com">Capsule CRM API.</a>
 
-The goal of this project is to make interacting with Capsule CRM's API very simple in Python. The documentation below covers the functional parts of the library.
+The goal of this project is to make interacting with Capsule CRM's API very simple in Python. The documentation below covers the tested and functional parts of the library.
 
 ### Installation
 To install the PyCapsule library simply clone the repository into your project directory like this:
