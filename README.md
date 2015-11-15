@@ -5,10 +5,11 @@ The goal of this project is to make interacting with Capsule CRM's API very simp
 
 ### Installation
 To install the PyCapsule library simply clone the repository into your project directory like this:
-`
+
+```
 cd path/to/project
 git clone https://github.com/maddencs/pycapsule.git
-`
+```
 
 
 ### Configuration
