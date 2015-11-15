@@ -47,3 +47,25 @@ Examples:
 orgs = pc.organisations.filter(name='Google') // Returns a list of PyCapsuleObjects with Google in the name
 orgs = pc.organisations.filter(name='Google', limit=100) // Returns a maximum of 100 matching organisiations
 ```
+
+##### To get an organisation by its ID
+Use the .get() method to grab a specific Capsule object from Capsule
+
+Example:
+```
+pc.organisations.get(id=1234567890) // Returns PyCapsuleObject for the org with this ID
+pc.organisations.get(id=1234567890, return_type='json') // Returns the json version of your query
+```
+
+#### People
+People share the same query methods as Organisations. The way the Capsule CRM handles people and organisations is under the same API endpoint, so querying parties and organisations will give you the same objects as a result. There is no benefit of querying either way.
+
+Example:
+
+```
+parties = pc.parties.all() // Returns a list of PyCapsuleObjects for the Party endpoint
+first_person = parties['person'][0]
+print(first_person.firstName) // Prints the firstName of the Capsule CRM person
+
+person = pc.parties.get(id=1234567890) // Gets you the "Person" object from Capsule CRM
+```
