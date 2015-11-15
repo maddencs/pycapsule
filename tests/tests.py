@@ -17,8 +17,8 @@ class TestOrganisationMethods(unittest.TestCase):
         self.maxDiff = None
         # Testing getting a PyCapsuleObject back
         potato = self.pc.organisations.get(id=POTATO_ID)
-        self.assertEqual(potato.name, 'Dancing Potatoes')
-        # Testing getting getting xml back
+        self.assertEqual(potato.name, 'Dancing Potatoes') 
+        # Testing getting getting xml back 
         xml_potato = self.pc.organisations.get(id=POTATO_ID, return_type='xml')
         xml_potato = ET.fromstring(xml_potato)
         self.assertEqual(xml_potato.find('name').text, ET.XML(test_data.dancing_potatoes_xml).find('name').text)

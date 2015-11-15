@@ -10,7 +10,7 @@ def make_pycobjects(data, manager):
             obj_dict['organisations'].append(PyCapsuleObject(manager, 'organisation', json_response=org))
     if 'people' in data['parties'].keys():
         for person in data['parties']['people']:
-            obj_dict['people'].append(PyCapsuleObject(manager, 'person', json_response=datas))
+            obj_dict['people'].append(PyCapsuleObject(manager, 'person', json_response=person))
     return obj_dict
 
 class PyCapsuleObject():
@@ -206,7 +206,6 @@ class PyCapsuleObjectManager():
             headers = self.pycapsule.json_headers
             url = self.location + '/%s' % id
             r = requests.get(url, auth=self.pycapsule.auth, headers=headers)
-            print(r.content)
             return PyCapsuleObject(self, self.endpoint, json_response=r.json())
 
     def filter(self, return_type=None, **kwargs):
