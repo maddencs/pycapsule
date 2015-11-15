@@ -3,14 +3,19 @@ import json
 
 
 def make_pycobjects(data, manager):
-    obj_dict = {'organisations': list(),
-            'people': list()}
-    if 'organisation' in data['parties'].keys():
-        for org in data['parties']['organisation']:
-            obj_dict['organisations'].append(PyCapsuleObject(manager, 'organisation', json_response=org))
-    if 'people' in data['parties'].keys():
-        for person in data['parties']['people']:
-            obj_dict['people'].append(PyCapsuleObject(manager, 'person', json_response=person))
+    obj_dict = dict()
+    for K, V in data.items():
+       try:
+           for k, v in list(V.items()):
+               obj_dict[k] = list()
+               if k != '@size':
+                   if isinstance(v, list):
+                       for obj in v:
+                           obj_dict[k].append(PyCapsuleObject(manager, k, json_response=obj))
+                   else:
+                        obj_dict[k].append(PyCapsuleObject(manager, k, json_response=v))
+       except:
+           pass
     return obj_dict
 
 class PyCapsuleObject():
@@ -32,7 +37,7 @@ class PyCapsuleObject():
         self.location = self.pycapsule.location + endpoint
         if json_response:
             for k, v in json_response.items():
-                if k not in ['organisation', 'party']:
+                if k not in ['organisation', 'person']:
                     setattr(self, k, v)
                 else:
                     for k2, v2 in v.items():
@@ -40,14 +45,27 @@ class PyCapsuleObject():
                             self.location = self.location + '/' +  str(v2)
                         setattr(self, k2, v2)
 
+    def get_headers(self, headers):
+        if headers:
+            return getattr(self.pycapsule, "%s_headers" % headers)
+        else:
+            return self.pycapsule.json_headers
+
+    def get_party_url(self):
+        import re
+        return re.match(r'https://[\w\d]*.capsulecrm.com/api/', self.location).group(0) + 'party/' + self.id
 
     def delete(self):
-        """Deletes the object from Capsule CRM"""
-        r = requests.delete(self.location, auth=self.pycapsule.auth)
+        """
+        Returns:
+            success(bool): True if successfully deleted else False
+        """
+        url = self.get_party_url()
+        r = requests.delete(url, auth=self.pycapsule.auth)
         if r.status_code == 200:
-            return "Object deleted"
+            return True
         else:
-            return "There was a problem deleting the object from Capsule CRM."
+            return False
 
     def update(self, data=None, data_type=None):
         """
@@ -57,26 +75,33 @@ class PyCapsuleObject():
             data (json/xml): data to update capsule object
             data_type(str): the type of data that you're sending
         """
-        if data_type:
-            headers = getattr(self.pycapsule, "%s_headers" % data_type)
+        headers = self.get_headers(data_type) 
         r = requests.put(self.location, auth=self.pycapsule.auth, data=data, headers=headers)
         if r.status_code != 200:
             return "There was a problem updating the object on Capsule CRM."
-
+    
+    @property
     def tags(self, headers=None):
         """
         returns:
             list: list of tags on the object
         """
-        if headers:
-            headers = getattr(self.pycapsule, "%s_headers" % headers)
-        url = self.pycapsule.location + 'party/' + str(self.id) + '/tag'
-        r = requests.get(url, auth=self.pycapsule.auth, headers=self.pycapsule.json_headers)
-        tags = dict(json.loads(r.content.decode("utf-8")))
-        tag_list = list()
-        for tag in tags['tags']['tag']:
-            tag_list.append(tag['name'])
-        return tag_list
+        headers = self.get_headers(headers)
+        # url = self.pycapsule.location + 'party/' + str(self.id) + '/tag'
+        # r = requests.get(url, auth=self.pycapsule.auth, headers=self.pycapsule.json_headers)
+        # tags = dict(json.loads(r.content.decode("utf-8")))
+        # tag_list = list()
+        # print(tags)
+        # if int(tags['tags']['@size']) > 0:
+            # for tag in tags['tags']['tag']:
+                # tag_list.append(tag['name'])
+            # return tag_list
+        
+        if self.endpoint in ['organisation', 'person']:
+            url = 'party/' + self.id + '/tag'
+        else:
+            url = self.endpoint + '/' + self.id + '/tag'
+        return PyCapsuleObjectManager(self, url)
 
     @property
     def custom_fields(self):
@@ -138,12 +163,29 @@ class PyCapsuleObjectManager():
     
     def __init__(self, pycapsule, endpoint, **kwargs):
         self.endpoint = endpoint
+        # if hasattr(pycapsule, 'location'):
+            # self.location = pycapsule.location + endpoint
         if hasattr(pycapsule, 'location'):
-            self.location = pycapsule.location + endpoint
+            self.set_location(pycapsule, endpoint)
         if hasattr(pycapsule, 'pycapsule'):
             self.pycapsule = pycapsule.pycapsule
         else:
             self.pycapsule = pycapsule
+    
+    def set_location(self, pycapsule, endpoint):
+        """For setting the API endpoint for tags, cases, etc."""
+        end = endpoint.split('/')
+        if end[len(end)-1] in ['tag']:
+            import re
+            self.location = re.match(r'https://[\w\d]*.capsulecrm.com/api/', pycapsule.location).group(0) + endpoint
+        else:
+            self.location = pycapsule.location + endpoint
+
+    def get_headers(self, headers):
+        if headers:
+            return getattr(self.pycapsule, "%s_headers" % headers)
+        else:
+            return self.pycapsule.json_headers
 
     def create(self, **kwargs):
         """
@@ -172,8 +214,7 @@ class PyCapsuleObjectManager():
         Example:
             pycapsule.parties.add('filename.xml', 'xml', return_type='object')
         """
-        if data_type:
-            headers = getattr(self.pycapsule, "%s_headers" % data_type)
+        headers = self.get_headers(data_type)
         r = requests.post(self.location, data=data, auth=self.pycapsule.auth, headers=headers)
         try:
             return r.headers['Location']
@@ -194,16 +235,15 @@ class PyCapsuleObjectManager():
         """
         if self.endpoint == 'person' or 'organisation':
             self.location = self.pycapsule.location + 'party'
+        headers = self.get_headers(return_type)
+        r = requests.get(self.location + '/%s' % id, auth=self.pycapsule.auth, headers=headers)
+        if r.status_code == 404:
+            return None
         if return_type == 'json':
-            headers = self.pycapsule.json_headers
-            r = requests.get(self.location + '/%s' % id, auth=self.pycapsule.auth, headers=headers)
             return r.json()
         elif return_type == 'xml':
-            headers = self.pycapsule.xml_headers
-            r = requests.get(self.location + '/%s' % id, auth=self.pycapsule.auth, headers=headers)
             return r.text
-        elif return_type is None:
-            headers = self.pycapsule.json_headers
+        else:
             url = self.location + '/%s' % id
             r = requests.get(url, auth=self.pycapsule.auth, headers=headers)
             return PyCapsuleObject(self, self.endpoint, json_response=r.json())
@@ -233,8 +273,10 @@ class PyCapsuleObjectManager():
             else:
                 params['q'].append(v)
         r = requests.get(self.location, auth=self.pycapsule.auth, headers=headers, params=params)
-        if return_type:
+        if return_type == 'xml':
             return r.content
+        if return_type == 'json':
+            return r.json()
         data = r.json()
         # return PyCapsuleObject(self, r.content, json_response=r.json())
         return make_pycobjects(data, self)
@@ -299,7 +341,7 @@ class PyCapsule():
                 organisations.
 
         """
-        return PyCapsuleObjectManager(self, 'party')
+        return PyCapsuleObjectManager(self, 'person')
 
     @property
     def opportunities(self):

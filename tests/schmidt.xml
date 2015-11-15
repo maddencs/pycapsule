@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<person>
+      <contacts>
+              <address>
+                        <type>Office</type>
+                              <street>1600 Amphitheatre Parkway</street>
+                                    <city>Mountain View</city>
+                                          <state>CA</state>
+                                                <zip>94043</zip>
+                                                      <country>United States</country>
+                                                          </address>
+                                                              <email>
+                                                                        <type>Home</type>
+                                                                              <emailAddress>e.schmidt@google.com</emailAddress>
+                                                                                  </email>
+                                                                                      <phone>
+                                                                                                <type>Mobile</type>
+                                                                                                      <phoneNumber>+1 888 555555</phoneNumber>
+                                                                                                          </phone>
+                                                                                                              <website>
+                                                                                                                        <type>work</type>
+                                                                                                                              <webService>URL</webService>
+                                                                                                                                    <webAddress>www.google.com</webAddress>
+                                                                                                                                        </website>
+                                                                                                                                          </contacts>
+                                                                                                                                            <title>Mr</title>
+                                                                                                                                              <firstName>Eric</firstName>
+                                                                                                                                                <lastName>Schmidt</lastName>
+                                                                                                                                                  <jobTitle>Chairman</jobTitle>
+                                                                                                                                                    <organisationName>Google Inc</organisationName>
+                                                                                                                                                      <about>A comment here</about>
+                                                                                                                                                  </person>
