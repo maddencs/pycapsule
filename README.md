@@ -1,5 +1,5 @@
 # PyCapsule
-Python library for consuming the <a href="https://developer.capsulecrm.com">Capsule CRM API.</a>
+Python library for consuming the <a href="http://developer.capsulecrm.com">Capsule CRM API.</a>
 
 The goal of this project is to make interacting with Capsule CRM's API very simple in Python.
 
