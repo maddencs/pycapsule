@@ -49,7 +49,7 @@ orgs = pc.organisations.filter(name='Google', limit=100) // Returns a maximum of
 ```
 
 ##### To get an organisation by its ID
-Use the .get() method to grab a specific Capsule object from Capsule
+Use the `get()` method to grab a specific Capsule object from Capsule
 
 Example:
 ```
